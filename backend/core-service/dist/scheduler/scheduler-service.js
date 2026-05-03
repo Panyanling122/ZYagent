@@ -67,6 +67,10 @@ class SchedulerService {
         this.logger.info("定时任务已注册: Token日统计 (00:05)");
         // 4. 数据库中的用户自定义任务
         await this.loadUserTasks();
+        // 5. 挂起任务提醒 - 工作日 9:00 检查
+        const remindJob = node_schedule_1.default.scheduleJob("task-reminder", { hour: 9, minute: 0, dayOfWeek: [1, 2, 3, 4, 5] }, () => this.runTaskReminder());
+        this.jobs.set("task-reminder", remindJob);
+        this.logger.info("定时任务已注册: 挂起任务提醒 (工作日 9:00)");
         this.logger.info(`调度器初始化完成，共 ${this.jobs.size} 个定时任务`);
     }
     /** 加载数据库中的用户自定义定时任务 */
@@ -175,6 +179,33 @@ class SchedulerService {
         }
         catch (err) {
             this.logger.error("Token日统计失败:", err.message);
+        }
+    }
+    /** 挂起任务提醒 - 检查超时未回复的任务 */
+    async runTaskReminder() {
+        this.logger.info("========== 检查挂起任务提醒 ==========");
+        try {
+            const { TaskService } = require('../services/task-service');
+            const taskService = TaskService.getInstance();
+            const overdueTasks = await taskService.findOverdueAwaiting();
+            if (overdueTasks.length === 0) {
+                this.logger.info("无需要提醒的挂起任务");
+                return;
+            }
+            for (const task of overdueTasks) {
+                await taskService.markReminded(task.id);
+                this.eventBus.emit('task:remind', {
+                    taskId: task.id,
+                    title: task.title,
+                    message: task.awaiting_response,
+                    assignedTo: task.assigned_to,
+                    channel: task.channel,
+                    deadline: task.response_deadline
+                });
+                this.logger.info(`[Reminder] 任务 #${task.id} (${task.title}) 已提醒用户 ${task.assigned_to}`);
+            }
+        } catch (err) {
+            this.logger.error("挂起任务提醒失败:", err.message);
         }
     }
     /** 手动触发任务（供API调用） */

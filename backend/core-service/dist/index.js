@@ -3,9 +3,6 @@
  * =============================================================================
  * 模块名称：核心服务主入口
  * 功能描述：Express HTTP服务 + WebSocket + 调度器 + Soul管理 + 渠道管理
- * 技术决策引用：#1 #21 #41
- * 创建日期：2026-04-30
- * 最后修改：2026-04-30
  * =============================================================================
  */
 var __importDefault = (this && this.__importDefault) || function (mod) {
@@ -26,6 +23,9 @@ const memory_service_1 = require("./memory/memory-service");
 const group_service_1 = require("./soul/group-service");
 const file_service_1 = require("./utils/file-service");
 const channel_manager_1 = require("./channels/channel-manager");
+const context_engine_1 = require("./context/context-engine");
+const workspace_service_1 = require("./services/workspace-service");
+const task_service_1 = require("./services/task-service");
 const logger = logger_1.Logger.getInstance();
 async function main() {
     logger.info("=== 中亿智能体集群 Core Service Starting ===");
@@ -43,6 +43,12 @@ async function main() {
     logger.info("Group service ready");
     // Initialize event bus
     event_bus_1.EventBus.getInstance();
+    // Initialize workspace service
+    workspace_service_1.WorkspaceService.getInstance();
+    logger.info("Workspace service ready");
+    // Initialize task service
+    task_service_1.TaskService.getInstance();
+    logger.info("Task service ready");
     // Initialize soul manager
     const soulManager = soul_manager_1.SoulManager.getInstance();
     await soulManager.initialize();
@@ -54,7 +60,6 @@ async function main() {
     await channelManager.loadFromDB();
     channelManager.onMessage((msg, channelType) => {
         logger.info(`[Channel] ${channelType} msg from ${msg.fromUserId}: ${msg.content.slice(0, 50)}`);
-        // Route to default soul (first active) or broadcast
         const souls = soulManager.getActiveSouls();
         const targetSoul = souls.length > 0 ? souls[0] : null;
         if (targetSoul) {
@@ -62,14 +67,13 @@ async function main() {
         }
     });
     logger.info("Channel manager ready");
-    // Initialize iLink bridge (微信对接)
-    const ilink_bridge_1 = require("./ilink/ilink-bridge");
-    const ilinkBridge = ilink_bridge_1.iLinkBridge.getInstance();
-    await ilinkBridge.restartAll().catch(err => logger.warn("iLink restart skipped:", err.message));
-    logger.info("iLink bridge ready");
+    // Initialize iLink adapter (微信对接)
+    const ilink_adapter_1 = require("./channels/ilink-adapter");
+    const iLinkAdapter = ilink_adapter_1.iLinkAdapter.getInstance();
+    await iLinkAdapter.initialize().catch(err => logger.warn("iLink init skipped:", err.message));
+    logger.info("iLink adapter ready");
     // Initialize context engine (L1/L2/L3)
-    const context_engine_1 = require("./context/context-engine");
-    const contextEngine = context_engine_1.ContextEngine.getInstance();
+    context_engine_1.ContextEngine.getInstance();
     logger.info("Context engine ready");
     // Initialize Feishu adapter
     const feishu_adapter_1 = require("./feishu/feishu-adapter");
@@ -83,13 +87,13 @@ async function main() {
     logger.info("Media service ready");
     // Initialize soul protocol (群协作)
     const soul_protocol_1 = require("./soul/soul-protocol");
-    const soulProtocol = soul_protocol_1.SoulProtocol.getInstance();
+    soul_protocol_1.SoulProtocol.getInstance();
     logger.info("Soul protocol ready");
     // Start HTTP API server (includes webhook routes)
     const app = (0, express_1.default)();
     app.use(express_1.default.json({ limit: "10mb" }));
     app.use(express_1.default.urlencoded({ extended: true, limit: "10mb" }));
-    // 日志脱敏中间件：请求到达时先脱敏敏感字段
+    // 日志脱敏中间件
     const log_sanitizer_1 = require("./utils/log-sanitizer");
     app.use((req, _res, next) => {
         if (req.body && typeof req.body === 'object') {
@@ -111,8 +115,7 @@ async function main() {
             }
             const result = await adapter.handleWebhook(req.body, req.query.signature, req.query.timestamp, req.query.nonce);
             res.send(result);
-        }
-        catch (err) {
+        } catch (err) {
             logger.error("[Webhook] WeChat error:", err.message);
             res.status(500).send("error");
         }
@@ -126,8 +129,7 @@ async function main() {
             }
             const result = await adapter.handleWebhook(req.body);
             res.status(200).json(result);
-        }
-        catch (err) {
+        } catch (err) {
             logger.error("[Webhook] Feishu error:", err.message);
             res.status(200).json({ code: 0 });
         }
@@ -139,6 +141,12 @@ async function main() {
     // iLink 微信 ClawBot 路由
     const ilink_chat_api_1 = require("./routes/ilink-chat-api");
     app.use("/api/ilink", ilink_chat_api_1.default);
+    // 工作空间路由
+    const workspace_routes_1 = __importDefault(require("./routes/workspace-routes"));
+    app.use("/api/workspaces", workspace_routes_1.default);
+    // 看板任务路由
+    const task_routes_1 = __importDefault(require("./routes/task-routes"));
+    app.use("/api/tasks", task_routes_1.default);
     // IP 白名单中间件（仅对 /api/admin 生效）
     const ADMIN_IP_WHITELIST = process.env.ADMIN_IP_WHITELIST || '';
     if (ADMIN_IP_WHITELIST) {
@@ -169,7 +177,6 @@ async function main() {
             res.status(200).json({ code: 0 });
         }
     });
-
     app.listen(config_1.Config.getInstance().port, () => {
         logger.info(`HTTP API listening on port ${config_1.Config.getInstance().port}`);
     });
@@ -195,4 +202,3 @@ main().catch((err) => {
     logger.error("Fatal error:", err);
     process.exit(1);
 });
-//# sourceMappingURL=index.js.map

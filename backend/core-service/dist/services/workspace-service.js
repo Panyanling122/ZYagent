@@ -67,7 +67,7 @@ class WorkspaceService {
     }
     async getSouls(workspaceId) {
         const result = await this.db.query(
-            `SELECT id, name, status, system_prompt FROM souls WHERE workspace_id = $1 ORDER BY created_at`,
+            `SELECT id, name, status FROM souls WHERE workspace_id = $1 ORDER BY created_at`,
             [workspaceId]
         );
         return result.rows;

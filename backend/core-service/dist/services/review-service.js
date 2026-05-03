@@ -60,10 +60,11 @@ ${messages.map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')}
         fs.appendFileSync(filePath, entry, 'utf8');
     }
     async saveSkill(soulId, workspaceId, skill) {
+        if (!skill.name || !skill.steps || skill.steps.length === 0) return;
         const basePath = process.env.DATA_PATH || '/data';
         const dir = path.join(basePath, 'workspaces', workspaceId || 'default', 'skills');
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        const yaml = `name: ${skill.name}\ntrigger: ${skill.trigger}\nsteps:\n${skill.steps.map(s => `  - ${s}`).join('\n')}`;
+        const yaml = `name: ${skill.name}\ntrigger: ${skill.trigger || 'manual'}\nsteps:\n${skill.steps.map(s => `  - ${s}`).join('\n')}`;
         fs.writeFileSync(path.join(dir, `auto-${skill.name}-${Date.now()}.yml`), yaml, 'utf8');
     }
     async logReview(soulId, workspaceId, triggerReason, output, facts, skills) {

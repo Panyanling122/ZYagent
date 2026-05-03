@@ -77,8 +77,17 @@ class HumanResponseMatcher {
         return 'unknown';
     }
     textSimilarity(a, b) {
-        const setA = new Set(a.split(/\s+/));
-        const setB = new Set(b.split(/\s+/));
+        const extractKeywords = (text) => {
+            const cleaned = text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+            const keywords = new Set();
+            for (let i = 0; i < cleaned.length - 1; i++) {
+                keywords.add(cleaned.slice(i, i + 2));
+                if (i < cleaned.length - 2) keywords.add(cleaned.slice(i, i + 3));
+            }
+            return keywords;
+        };
+        const setA = extractKeywords(a);
+        const setB = extractKeywords(b);
         const intersection = new Set([...setA].filter(x => setB.has(x)));
         const union = new Set([...setA, ...setB]);
         return union.size === 0 ? 0 : intersection.size / union.size;

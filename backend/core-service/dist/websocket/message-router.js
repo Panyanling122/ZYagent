@@ -104,7 +104,7 @@ class MessageRouter {
                     [client.soulId, client.userId, client.workspaceId, currentTopic]
                 );
                 const historyMessages = historyResult.rows.reverse().map(h => ({ role: h.role, content: h.content }));
-                const wrapped = `[系统指令：${systemPrompt}]\n\n现在用户的问题是：${actualContent}`;
+                const wrapped = `${systemPrompt}\n\n现在用户的问题是：${actualContent}`;
                 modelMessages = [...historyMessages, { role: 'user', content: wrapped }];
             }
             const response = await this.services.soulManager.handleChat(client.soulId, { messages: modelMessages });

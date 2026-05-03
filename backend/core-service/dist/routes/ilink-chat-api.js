@@ -134,7 +134,7 @@ router.post('/chat', async (req, res) => {
         const basePrompt = soulResult.rows[0]?.system_prompt || '你是一个 helpful AI assistant。';
         const { AwaitHumanParser } = require('../services/await-human-parser');
         const systemPrompt = AwaitHumanParser.getInstance().injectSystemPrompt(basePrompt);
-        const wrappedContent = `[系统指令：${systemPrompt}]\n\n${actualContent}`;
+        const wrappedContent = `${systemPrompt}\n\n现在用户的问题是：${actualContent}`;
         const modelMessages = [...historyMessages, { role: 'user', content: wrappedContent }];
         // 调用 AI
         const soulManager = require('../soul/soul-process').SoulProcessManager.getInstance();

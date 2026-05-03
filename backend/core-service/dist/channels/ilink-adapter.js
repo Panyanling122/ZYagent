@@ -51,7 +51,18 @@ class iLinkAdapter {
         const client = new ilink_client_1.iLinkClient(botToken, contextToken, soulId);
         client.on('chat_request', async (payload) => {
             try {
-                const response = await this.soulManager.handleChat(soulId, { messages: payload.messages });
+                const { AwaitHumanParser } = require('../services/await-human-parser');
+                const parser = AwaitHumanParser.getInstance();
+                const soulResult = await this.db.query('SELECT system_prompt FROM souls WHERE id = $1', [soulId]);
+                const basePrompt = soulResult.rows[0]?.system_prompt || '你是一个 helpful AI assistant。';
+                const systemPrompt = parser.injectSystemPrompt(basePrompt);
+                const injectedMessages = payload.messages.map((m, i) => {
+                    if (i === payload.messages.length - 1 && m.role === 'user') {
+                        return { ...m, content: `[系统指令：${systemPrompt}]\n\n${m.content}` };
+                    }
+                    return m;
+                });
+                const response = await this.soulManager.handleChat(soulId, { messages: injectedMessages });
                 await payload.replyCallback(response);
             } catch (err) {
                 this.logger.error(`[iLink] Chat failed:`, err.message);
