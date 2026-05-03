@@ -92,7 +92,9 @@ class MessageRouter {
                 [client.soulId, client.workspaceId]
             );
             const soulData = soulResult.rows[0];
-            const systemPrompt = soulData?.system_prompt || '你是一个 helpful AI assistant。';
+            const basePrompt = soulData?.system_prompt || '你是一个 helpful AI assistant。';
+            const { AwaitHumanParser } = require('../services/await-human-parser');
+            const systemPrompt = AwaitHumanParser.getInstance().injectSystemPrompt(basePrompt);
             let modelMessages;
             try {
                 modelMessages = await this.services.contextEngine.buildContext(client.userId, client.soulId, actualContent, systemPrompt);
@@ -106,6 +108,16 @@ class MessageRouter {
                 modelMessages = [...historyMessages, { role: 'user', content: wrapped }];
             }
             const response = await this.services.soulManager.handleChat(client.soulId, { messages: modelMessages });
+            // === await_human 检测 ===
+            const { AwaitHumanParser } = require('../services/await-human-parser');
+            const awaitParser = AwaitHumanParser.getInstance();
+            const context = { messages: modelMessages, soulId: client.soulId, userId: client.userId, workspaceId: client.workspaceId, topic: currentTopic };
+            const awaitResult = await awaitParser.process(client.soulId, client.userId, client.workspaceId, response, 'websocket', currentTopic, context);
+            let finalResponse = response;
+            if (awaitResult) {
+                finalResponse = awaitResult.cleanResponse || response;
+                this.safeSend(client.socket, { type: 'task_awaiting_human', taskId: awaitResult.taskId, question: awaitResult.question, options: awaitResult.options });
+            }
             await db.query(
                 `INSERT INTO messages (id, soul_id, user_id, role, content, session_id, topic, topic_changed, workspace_id, created_at) VALUES (gen_random_uuid(), $1, $2, 'user', $3, $4, $5, $6, $7, NOW())`,
                 [client.soulId, client.userId, actualContent, msg.sessionId || null, currentTopic, topicResult.isSwitched, client.workspaceId]

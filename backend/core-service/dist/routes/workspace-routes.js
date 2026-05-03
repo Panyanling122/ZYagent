@@ -36,6 +36,22 @@ router.get("/workspaces/:id", async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.put("/workspaces/:id", async (req, res) => {
+    try {
+        const userId = req.user?.id || req.headers["x-user-id"];
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const ws = await service.getById(req.params.id, userId);
+        if (!ws) return res.status(404).json({ error: "Not found" });
+        const { name, description, icon } = req.body;
+        const db = require("../utils/db").Database.getInstance();
+        const result = await db.query(
+            `UPDATE workspaces SET name = COALESCE($1, name), description = COALESCE($2, description), icon = COALESCE($3, icon), updated_at = NOW() WHERE id = $4 RETURNING *`,
+            [name, description, icon, req.params.id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.delete("/workspaces/:id", async (req, res) => {
     try {
         const userId = req.user?.id || req.headers["x-user-id"];

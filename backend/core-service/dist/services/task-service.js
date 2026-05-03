@@ -77,7 +77,13 @@ class TaskService {
         if (!valid.includes(newStatus)) throw new Error(`Invalid transition: ${oldStatus} -> ${newStatus}`);
         const updates = { status: newStatus, updated_at: new Date().toISOString() };
         if (newStatus === 'in_progress' && !task.started_at) updates.started_at = new Date().toISOString();
-        if (newStatus === 'done') updates.completed_at = new Date().toISOString();
+        if (newStatus === 'in_progress' && oldStatus === 'awaiting_human') {
+            this.eventBus.emit('task:resumed', { taskId, executionContext: task.execution_context, changedBy });
+        }
+        if (newStatus === 'done') {
+            updates.completed_at = new Date().toISOString();
+            this.eventBus.emit('task:completed', { taskId, result: 'Task completed' });
+        }
         const setClause = Object.keys(updates).map((k, i) => `${k} = $${i + 4}`).join(', ');
         const values = [taskId, workspaceId, newStatus, ...Object.values(updates)];
         await this.db.query(`UPDATE tasks SET ${setClause} WHERE id = $1 AND workspace_id = $2`, values);

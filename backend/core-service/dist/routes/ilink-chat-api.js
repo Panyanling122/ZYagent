@@ -1,49 +1,34 @@
 "use strict";
 /**
  * =============================================================================
- * 模块名称：iLink Chat HTTP API
- * 功能描述：iLink Bridge 调用的 HTTP API，限流保护，Token 统计
- *   - POST /api/ilink/chat    : 微信消息接入
- *   - POST /api/ilink/register: 注册新的 iLink 上下文
- *   - GET  /api/ilink/status  : 查询连接状态
+ * 模块名称：iLink 消息路由
+ * 功能描述：微信消息接入 + 人机协作恢复 + await_human 检测
  * =============================================================================
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
-const ilink_bridge_1 = require("../ilink/ilink-bridge");
 const db_1 = require("../utils/db");
 const logger_1 = require("../utils/logger");
+const ilink_adapter_1 = require("../channels/ilink-adapter");
 const router = express.Router();
-const bridge = ilink_bridge_1.iLinkBridge.getInstance();
+const bridge = ilink_adapter_1.iLinkAdapter.getInstance();
 const logger = logger_1.Logger.getInstance();
-// 简单内存限流器
-const rateLimiter = new Map();
-const RATE_LIMIT_WINDOW_MS = 60000;
-const RATE_LIMIT_MAX = 30;
+
+// 简单限流：每个用户每分钟最多 10 条
+const rateLimitMap = new Map();
 function checkRateLimit(key) {
     const now = Date.now();
-    const record = rateLimiter.get(key);
-    if (!record || now - record.windowStart > RATE_LIMIT_WINDOW_MS) {
-        rateLimiter.set(key, { windowStart: now, count: 1 });
-        return true;
-    }
-    if (record.count >= RATE_LIMIT_MAX) {
-        return false;
-    }
-    record.count++;
+    const windowStart = now - 60000;
+    const entries = rateLimitMap.get(key) || [];
+    const valid = entries.filter(t => t > windowStart);
+    if (valid.length >= 10) return false;
+    valid.push(now);
+    rateLimitMap.set(key, valid);
     return true;
 }
-// 每10分钟清理过期限流记录
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, record] of rateLimiter.entries()) {
-        if (now - record.windowStart > RATE_LIMIT_WINDOW_MS * 2) {
-            rateLimiter.delete(key);
-        }
-    }
-}, 600000);
+
 /**
- * 注册 iLink 上下文
+ * 注册 iLink 连接
  * POST /api/ilink/register
  */
 router.post('/register', async (req, res) => {
@@ -54,14 +39,14 @@ router.post('/register', async (req, res) => {
         }
         const client = await bridge.registerContext(contextToken, soulId, botToken);
         res.json({ success: true, contextToken, soulId, status: client.pollingActive ? 'polling' : 'pending' });
-    }
-    catch (err) {
+    } catch (err) {
         logger.error('[iLinkAPI] Register failed:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
+
 /**
- * 微信消息接入（直接消息转发）
+ * 微信消息接入
  * POST /api/ilink/chat
  */
 router.post('/chat', async (req, res) => {
@@ -74,21 +59,21 @@ router.post('/chat', async (req, res) => {
         if (!client) {
             return res.status(404).json({ error: 'Context not found' });
         }
-        // 限流检查
+        // 限流
         const rateKey = `${contextToken}:${wxUserId || 'unknown'}`;
         if (!checkRateLimit(rateKey)) {
             return res.status(429).json({ error: 'Rate limit exceeded' });
         }
         const db = db_1.Database.getInstance();
         // 获取 soulId
-        const ctxResult = await db.query(
-            `SELECT soul_id FROM ilink_contexts WHERE context_token = $1`,
-            [contextToken]
-        );
+        const ctxResult = await db.query(`SELECT soul_id FROM ilink_contexts WHERE context_token = $1`, [contextToken]);
         const soulId = ctxResult.rows[0]?.soul_id;
         if (!soulId) {
             return res.status(404).json({ error: 'Soul not found for context' });
         }
+        // 获取 workspace_id
+        const soulWsResult = await db.query('SELECT workspace_id FROM souls WHERE id = $1', [soulId]);
+        const workspaceId = soulWsResult.rows[0]?.workspace_id;
         // 查找用户映射
         const mappingResult = await db.query(
             `SELECT user_id FROM ilink_user_mappings WHERE wx_user_id = $1 AND soul_id = $2`,
@@ -98,6 +83,37 @@ router.post('/chat', async (req, res) => {
         if (!userId) {
             return res.status(404).json({ error: 'User mapping not found' });
         }
+        // === 人机协作中断恢复 ===
+        const { HumanResponseMatcher } = require('../services/human-response-matcher');
+        const matcher = HumanResponseMatcher.getInstance();
+        const matchedTask = workspaceId ? await matcher.match(message, userId, workspaceId) : null;
+        if (matchedTask && matchedTask.confidence > 0.5) {
+            const task = matchedTask.task;
+            const intent = matcher.parseIntent(message);
+            const { TaskService } = require('../services/task-service');
+            const taskService = TaskService.getInstance();
+            await taskService.addComment(task.id, workspaceId, 'human', userId, message);
+            const eventBus = require('../events/event-bus').EventBus.getInstance();
+            if (intent === 'approve') {
+                await taskService.updateStatus(task.id, workspaceId, 'in_progress', userId, 'Human approved');
+                eventBus.emit('task:human_responded', { taskId: task.id, response: message, intent: 'approve', matchedConfidence: matchedTask.confidence });
+                res.json({ success: true, type: 'task_resumed', taskId: task.id, intent: 'approve' });
+                return;
+            } else if (intent === 'reject') {
+                await taskService.updateStatus(task.id, workspaceId, 'cancelled', userId, 'Human rejected');
+                eventBus.emit('task:human_responded', { taskId: task.id, response: message, intent: 'reject', matchedConfidence: matchedTask.confidence });
+                res.json({ success: true, type: 'task_cancelled', taskId: task.id, intent: 'reject' });
+                return;
+            } else if (intent === 'modify') {
+                await taskService.updateStatus(task.id, workspaceId, 'in_progress', userId, 'Human requested modification');
+                eventBus.emit('task:human_responded', { taskId: task.id, response: message, intent: 'modify', matchedConfidence: matchedTask.confidence });
+                res.json({ success: true, type: 'task_modified', taskId: task.id, intent: 'modify' });
+                return;
+            } else {
+                res.json({ success: true, type: 'needs_clarification', taskId: task.id, message: '请明确您的意图：同意、拒绝或修改？' });
+                return;
+            }
+        }
         // 话题检测
         const { TopicService } = require('../soul/topic-service');
         const topicService = TopicService.getInstance();
@@ -106,67 +122,62 @@ router.post('/chat', async (req, res) => {
         const actualContent = topicResult.cleanContent || message;
         // 保存用户消息
         await db.query(
-            `INSERT INTO messages (id, soul_id, user_id, role, content, topic, topic_changed, created_at)
-             VALUES (gen_random_uuid(), $1, $2, 'user', $3, $4, $5, NOW())`,
-            [soulId, userId, actualContent, currentTopic, topicResult.isSwitched]
+            `INSERT INTO messages (id, soul_id, user_id, role, content, topic, topic_changed, workspace_id, created_at)
+             VALUES (gen_random_uuid(), $1, $2, 'user', $3, $4, $5, $6, NOW())`,
+            [soulId, userId, actualContent, currentTopic, topicResult.isSwitched, workspaceId]
         );
-        // 获取历史消息（按话题隔离）
+        // 获取历史
         const historyRows = await topicService.getMessagesByTopic(userId, soulId, currentTopic, 20);
         const historyMessages = historyRows.map(h => ({ role: h.role, content: h.content }));
-        // 查询 Soul system_prompt
+        // 查询 Soul system_prompt 并注入 await_human 工具说明
         const soulResult = await db.query('SELECT system_prompt FROM souls WHERE id = $1', [soulId]);
-        const systemPrompt = soulResult.rows[0]?.system_prompt || '你是一个 helpful AI assistant。';
+        const basePrompt = soulResult.rows[0]?.system_prompt || '你是一个 helpful AI assistant。';
+        const { AwaitHumanParser } = require('../services/await-human-parser');
+        const systemPrompt = AwaitHumanParser.getInstance().injectSystemPrompt(basePrompt);
         const wrappedContent = `[系统指令：${systemPrompt}]\n\n${actualContent}`;
         const modelMessages = [...historyMessages, { role: 'user', content: wrappedContent }];
         // 调用 AI
         const soulManager = require('../soul/soul-process').SoulProcessManager.getInstance();
         const response = await soulManager.handleChat(soulId, { messages: modelMessages });
+        // === await_human 检测 ===
+        const awaitParser = AwaitHumanParser.getInstance();
+        const ctx = { messages: modelMessages, soulId, userId, workspaceId, topic: currentTopic };
+        const awaitResult = workspaceId ? await awaitParser.process(soulId, userId, workspaceId, response, 'wechat', currentTopic, ctx) : null;
+        let finalResponse = response;
+        if (awaitResult) {
+            finalResponse = awaitResult.formattedMessage || awaitResult.cleanResponse || response;
+        }
         // 保存 AI 回复
         await db.query(
-            `INSERT INTO messages (id, soul_id, user_id, role, content, topic, created_at)
-             VALUES (gen_random_uuid(), $1, $2, 'assistant', $3, $4, NOW())`,
-            [soulId, userId, response, currentTopic]
+            `INSERT INTO messages (id, soul_id, user_id, role, content, topic, workspace_id, created_at)
+             VALUES (gen_random_uuid(), $1, $2, 'assistant', $3, $4, $5, NOW())`,
+            [soulId, userId, awaitResult ? awaitResult.cleanResponse || response : response, currentTopic, workspaceId]
         );
-        // Token 统计（简单估算）
-        const inputTokens = estimateTokens(message);
-        const outputTokens = estimateTokens(response);
         res.json({
             success: true,
-            reply: response,
+            response: finalResponse,
             topic: currentTopic,
-            topicSwitched: topicResult.isSwitched,
-            tokens: { input: inputTokens, output: outputTokens }
+            messageId,
+            awaitedHuman: awaitResult ? { taskId: awaitResult.taskId, question: awaitResult.question } : null
         });
-    }
-    catch (err) {
+    } catch (err) {
         logger.error('[iLinkAPI] Chat failed:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
+
 /**
- * 查询连接状态
- * GET /api/ilink/status
+ * 获取活跃上下文列表
+ * GET /api/ilink/contexts
  */
-router.get('/status', async (req, res) => {
+router.get('/contexts', (_req, res) => {
     try {
         const contexts = bridge.getActiveContexts();
-        res.json({
-            activeContexts: contexts.length,
-            contexts: contexts.map(c => ({
-                contextToken: c.contextToken,
-                soulId: c.soulId,
-                pollingActive: c.pollingActive
-            }))
-        });
-    }
-    catch (err) {
+        res.json({ success: true, contexts });
+    } catch (err) {
+        logger.error('[iLinkAPI] Get contexts failed:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
-function estimateTokens(text) {
-    const chinese = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
-    const other = text.length - chinese;
-    return Math.ceil(chinese + other / 2.5);
-}
+
 exports.default = router;
-//# sourceMappingURL=ilink-chat-api.js.map

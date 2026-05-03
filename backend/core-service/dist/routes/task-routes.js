@@ -49,6 +49,53 @@ router.patch("/tasks/:id/status", async (req, res) => {
     } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+router.patch("/tasks/:id/status", async (req, res) => {
+    try {
+        const userId = getUserId(req);
+        const workspaceId = getWorkspaceId(req);
+        const { status, reason } = req.body;
+        if (!status) return res.status(400).json({ error: "status required" });
+        const task = await service.updateStatus(req.params.id, workspaceId, status, userId, reason);
+        res.json(task);
+    } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.put("/tasks/:id", async (req, res) => {
+    try {
+        const workspaceId = getWorkspaceId(req);
+        const { title, description, priority, type, soul_id, topic, channel } = req.body;
+        const db = require("../utils/db").Database.getInstance();
+        const result = await db.query(
+            `UPDATE tasks SET title = COALESCE($1, title), description = COALESCE($2, description),
+             priority = COALESCE($3, priority), type = COALESCE($4, type), soul_id = COALESCE($5, soul_id),
+             topic = COALESCE($6, topic), channel = COALESCE($7, channel), updated_at = NOW()
+             WHERE id = $8 AND workspace_id = $9 RETURNING *`,
+            [title, description, priority, type, soul_id, topic, channel, req.params.id, workspaceId]
+        );
+        if (!result.rows[0]) return res.status(404).json({ error: "Task not found" });
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post("/tasks/:id/assign", async (req, res) => {
+    try {
+        const userId = getUserId(req);
+        const workspaceId = getWorkspaceId(req);
+        const { assigned_to, assigned_type } = req.body;
+        const db = require("../utils/db").Database.getInstance();
+        const result = await db.query(
+            `UPDATE tasks SET assigned_to = $1, updated_at = NOW() WHERE id = $2 AND workspace_id = $3 RETURNING *`,
+            [assigned_to, req.params.id, workspaceId]
+        );
+        if (!result.rows[0]) return res.status(404).json({ error: "Task not found" });
+        await db.query(
+            `INSERT INTO task_history (task_id, from_status, to_status, changed_by, reason, created_at) VALUES ($1, $2, $3, $4, $5, NOW())`,
+            [req.params.id, result.rows[0].status, result.rows[0].status, userId, `Assigned to ${assigned_type || 'user'}: ${assigned_to}`]
+        );
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.post("/tasks/:id/comments", async (req, res) => {
     try {
         const userId = getUserId(req);

@@ -40,7 +40,33 @@ class HumanResponseMatcher {
             if (score > bestScore) { bestScore = score; bestMatch = task; }
         }
         if (bestMatch && bestScore > 0.3) return { task: bestMatch, confidence: bestScore, method: 'keyword_similarity' };
+        // 4. LLM 二次匹配（候选数>1 且关键词不够强时）
+        if (candidates.rows.length > 1) {
+            const llmMatch = await this.llmMatch(response, candidates.rows);
+            if (llmMatch) return { task: llmMatch, confidence: 0.75, method: 'llm_match' };
+        }
         return { task: candidates.rows[0], confidence: 0.5, method: 'fallback_recent' };
+    }
+    /** LLM 二次确认匹配 */
+    async llmMatch(response, candidates) {
+        try {
+            const { AIGateway } = require('../gateway/ai-gateway');
+            const gateway = new AIGateway();
+            const context = candidates.map((t, i) => `任务${i + 1}(${t.id}): ${t.title}\n等待回复: ${t.awaiting_response || '无'}`).join('\n\n');
+            const result = await gateway.chat({
+                messages: [
+                    { role: 'system', content: '你是一个任务匹配助手。根据用户回复判断是在回复哪个任务。只返回任务ID（UUID格式），不要解释。' },
+                    { role: 'user', content: `用户回复: "${response}"\n\n候选任务:\n${context}\n\n请判断用户在回复哪个任务，只返回任务ID。` }
+                ],
+                max_tokens: 50,
+                temperature: 0
+            });
+            const matchedId = result.content.trim().match(/[a-f0-9-]{36}/);
+            if (!matchedId) return null;
+            return candidates.find(t => t.id === matchedId[0]) || null;
+        } catch {
+            return null;
+        }
     }
     parseIntent(response) {
         const text = response.toLowerCase();
