@@ -1,0 +1,57 @@
+{"level":"INFO","time":1777715760556,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.556Z","msg":"=== 中亿智能体集群 Core Service Starting ==="}
+{"level":"INFO","time":1777715760558,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.558Z","msg":"Database connected"}
+{"level":"INFO","time":1777715760558,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.558Z","msg":"File service ready"}
+{"level":"INFO","time":1777715760559,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.559Z","msg":"Memory service ready"}
+{"level":"INFO","time":1777715760559,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.559Z","msg":"Group service ready"}
+{"level":"INFO","time":1777715760599,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.599Z","msg":"Soul 咸亨的scp订单同步智能体 started (PID: 1416157)"}
+{"level":"INFO","time":1777715760601,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.601Z","msg":"Soul 李林璟的智能助手 started (PID: 1416158)"}
+{"level":"INFO","time":1777715760603,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.603Z","msg":"Soul 郭原序的智能助手 started (PID: 1416159)"}
+{"level":"INFO","time":1777715760607,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.607Z","msg":"Soul Soul-Delta started (PID: 1416160)"}
+{"level":"INFO","time":1777715760608,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.608Z","msg":"Soul 潘彦霖的专属小助手 started (PID: 1416172)"}
+{"level":"INFO","time":1777715760620,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.620Z","msg":"Soul TestSoul-02 started (PID: 1416177)"}
+{"level":"INFO","time":1777715760630,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.630Z","msg":"Soul 询价智能体 started (PID: 1416180)"}
+{"level":"INFO","time":1777715760670,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.670Z","msg":"Soul 对账单生成智能体 started (PID: 1416195)"}
+{"level":"INFO","time":1777715760692,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.692Z","msg":"Soul 库存查询智能体 started (PID: 1416204)"}
+{"level":"INFO","time":1777715760723,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.723Z","msg":"Soul TestSoul-06 started (PID: 1416218)"}
+{"level":"INFO","time":1777715760752,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.752Z","msg":"Soul TestSoul-07 started (PID: 1416219)"}
+{"level":"INFO","time":1777715760755,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.755Z","msg":"Soul TestSoul-08 started (PID: 1416225)"}
+{"level":"INFO","time":1777715760780,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.780Z","msg":"Soul TestSoul-09 started (PID: 1416226)"}
+{"level":"INFO","time":1777715760788,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.788Z","msg":"Soul TestSoul-10 started (PID: 1416230)"}
+{"level":"INFO","time":1777715760812,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.812Z","msg":"Soul TestSoul-11 started (PID: 1416239)"}
+{"level":"INFO","time":1777715760831,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.831Z","msg":"Soul TestSoul-12 started (PID: 1416244)"}
+{"level":"INFO","time":1777715760848,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.848Z","msg":"Soul TestSoul-13 started (PID: 1416256)"}
+{"level":"INFO","time":1777715760855,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.855Z","msg":"Soul TestSoul-14 started (PID: 1416266)"}
+{"level":"INFO","time":1777715760875,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.875Z","msg":"Soul TestSoul-15 started (PID: 1416267)"}
+{"level":"INFO","time":1777715760887,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.887Z","msg":"Soul TestSoul-16 started (PID: 1416275)"}
+{"level":"INFO","time":1777715760887,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:00.887Z","msg":"Initialized 20 souls"}
+{"level":"INFO","time":1777715761038,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.038Z","msg":"定时任务已注册: 每日L2总结 (0 3 * * *)"}
+{"level":"INFO","time":1777715761051,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.051Z","msg":"定时任务已注册: 每周L3合并 (周日00:00)"}
+{"level":"INFO","time":1777715761052,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.052Z","msg":"定时任务已注册: Token日统计 (00:05)"}
+{"level":"INFO","time":1777715761056,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.056Z","msg":"调度器初始化完成，共 3 个定时任务"}
+{"level":"INFO","time":1777715761099,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.099Z","msg":"Channel manager ready"}
+{"level":"INFO","time":1777715761118,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.118Z","msg":"=== 中亿智能体集群 Core Service Running ==="}
+{"level":"INFO","time":1777715761118,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.118Z","msg":"API Port: 3001"}
+{"level":"INFO","time":1777715761118,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.118Z","msg":"WebSocket Port: 3003"}
+{"level":"INFO","time":1777715761118,"pid":1416145,"service":"core-service","timestamp":"2026-05-02T09:56:01.118Z","msg":"Health Port: 3004"}
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/opt/openclaw/core-service/node_modules/express/lib/application.js:635:24)
+    at main (/opt/openclaw/core-service/dist/index.js:104:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.20.2
