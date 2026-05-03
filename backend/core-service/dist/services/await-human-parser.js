@@ -57,10 +57,24 @@ class AwaitHumanParser {
      * 处理 await_human 标记：创建任务、挂起、发送格式化消息
      */
     async process(soulId, userId, workspaceId, response, channel, topic, context) {
-        const parsed = this.parse(response);
-        if (!parsed) return null;
-        const taskService = task_service_1.TaskService.getInstance();
-        const db = require("../utils/db").Database.getInstance();
+        try {
+            const parsed = this.parse(response);
+            if (!parsed) return null;
+            const taskService = task_service_1.TaskService.getInstance();
+            const db = require("../utils/db").Database.getInstance();
+            // ... rest of existing code ...
+            return {
+                taskId: task.id,
+                formattedMessage: formatted,
+                cleanResponse: response.replace(parsed.rawMarker, '').trim(),
+                question: parsed.question,
+                options: parsed.options,
+            };
+        } catch (err) {
+            this.logger.error(`[AwaitHuman] process failed:`, err.message);
+            throw err;
+        }
+    }
         // 检查是否有同一 soul 的 in_progress 任务可复用（多轮确认）
         const existing = await db.query(
             `SELECT id FROM tasks WHERE soul_id = $1 AND workspace_id = $2 AND status = 'in_progress' ORDER BY updated_at DESC LIMIT 1`,

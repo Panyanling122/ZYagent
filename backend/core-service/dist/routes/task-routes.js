@@ -6,7 +6,11 @@ const router = express.Router();
 const service = task_service_1.TaskService.getInstance();
 
 function getUserId(req) { return req.user?.id || req.headers["x-user-id"]; }
-function getWorkspaceId(req) { return req.headers["x-workspace-id"] || req.body?.workspace_id; }
+function getWorkspaceId(req) { 
+    const val = req.headers["x-workspace-id"] || req.body?.workspace_id;
+    if (val && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)) return null;
+    return val;
+}
 
 router.get("/tasks", async (req, res) => {
     try {

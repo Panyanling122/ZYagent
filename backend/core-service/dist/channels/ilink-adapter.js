@@ -41,7 +41,8 @@ class iLinkAdapter {
         return { code: 0 };
     }
     formatMessageForPlatform(content) {
-        return content.substring(0, 4000);
+        if (content.length <= 4000) return content;
+        return content.substring(0, 3997) + '...';
     }
     async registerContext(contextToken, soulId, botToken) {
         if (this.clients.has(contextToken)) {

@@ -183,6 +183,22 @@ if (process.argv.includes('--soul')) {
                         content: result.content,
                         usage: result.usage,
                     });
+                    // === Background Review trigger ===
+                    messageCount++;
+                    if (messageCount % 10 === 0) {
+                        try {
+                            const { ReviewService } = require('../services/review-service');
+                            const reviewService = ReviewService.getInstance();
+                            const wsResult = await db_1.Database.getInstance().query(
+                                'SELECT workspace_id FROM souls WHERE id = $1', [soulId]
+                            );
+                            const workspaceId = wsResult.rows[0]?.workspace_id;
+                            const recentMessages = msg.payload.messages.slice(-20);
+                            await reviewService.review(soulId, workspaceId, recentMessages);
+                        } catch (reviewErr) {
+                            console.error(`[SoulWorker] Background Review failed:`, reviewErr.message);
+                        }
+                    }
                 }
                 catch (err) {
                     if (process.connected) process.send({

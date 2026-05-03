@@ -120,17 +120,14 @@ async function main() {
             res.status(500).send("error");
         }
     });
-    app.post("/webhook/feishu", async (req, res) => {
+    // 飞书 Webhook v2
+    app.post("/webhook/feishu/v2", async (req, res) => {
         try {
-            const adapter = channelManager.getAdapter("feishu");
-            if (!adapter) {
-                res.status(503).send("not configured");
-                return;
-            }
-            const result = await adapter.handleWebhook(req.body);
-            res.status(200).json(result);
+            const adapter = feishu_adapter_1.FeishuAdapter.getInstance();
+            const result = await adapter.handleWebhook(req.body, req.headers);
+            res.json(result);
         } catch (err) {
-            logger.error("[Webhook] Feishu error:", err.message);
+            logger.error("[Webhook] Feishu v2 error:", err.message);
             res.status(200).json({ code: 0 });
         }
     });
@@ -166,17 +163,6 @@ async function main() {
     // 文件上传路由
     const file_api_1 = require("./routes/file-api");
     app.use("/api/files", file_api_1.default);
-    // 飞书 Webhook
-    app.post("/webhook/feishu/v2", async (req, res) => {
-        try {
-            const adapter = feishu_adapter_1.FeishuAdapter.getInstance();
-            const result = await adapter.handleWebhook(req.body, req.headers);
-            res.json(result);
-        } catch (err) {
-            logger.error("[Webhook] Feishu v2 error:", err.message);
-            res.status(200).json({ code: 0 });
-        }
-    });
     app.listen(config_1.Config.getInstance().port, () => {
         logger.info(`HTTP API listening on port ${config_1.Config.getInstance().port}`);
     });

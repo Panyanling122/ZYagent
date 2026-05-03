@@ -10,7 +10,7 @@ exports.WebSocketServer = void 0;
 const ws_1 = require("ws");
 const http_1 = require("http");
 const message_router_1 = require("./message-router");
-class WSServer {
+class WebSocketServer {
     wss;
     clients = new Map();
     router;

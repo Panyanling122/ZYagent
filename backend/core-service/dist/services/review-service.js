@@ -27,7 +27,7 @@ class ReviewService {
     }
     async review(soulId, workspaceId, messages) {
         const prompt = `分析以下对话历史：
-${messages.map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')}
+${messages.map(m => `${m.role}: ${m.content.length > 200 ? m.content.substring(0, 200) + '...' : m.content}`).join('\n')}
 
 提取事实和Skill，输出JSON: {"facts":[{"type":"preference|project|decision|other","content":"","importance":1-5}],"skills":[{"name":"","trigger":"","steps":[""]}]}`;
         try {

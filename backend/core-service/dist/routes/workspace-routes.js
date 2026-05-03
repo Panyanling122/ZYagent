@@ -5,6 +5,10 @@ const workspace_service_1 = require("../services/workspace-service");
 const router = express.Router();
 const service = workspace_service_1.WorkspaceService.getInstance();
 
+function validateUUID(val) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+}
+
 router.get("/workspaces", async (req, res) => {
     try {
         const userId = req.user?.id || req.headers["x-user-id"];
@@ -29,6 +33,7 @@ router.get("/workspaces/:id", async (req, res) => {
     try {
         const userId = req.user?.id || req.headers["x-user-id"];
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        if (!validateUUID(req.params.id)) return res.status(400).json({ error: "Invalid workspace ID" });
         const ws = await service.getById(req.params.id, userId);
         if (!ws) return res.status(404).json({ error: "Not found" });
         const souls = await service.getSouls(req.params.id);
@@ -40,6 +45,7 @@ router.put("/workspaces/:id", async (req, res) => {
     try {
         const userId = req.user?.id || req.headers["x-user-id"];
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        if (!validateUUID(req.params.id)) return res.status(400).json({ error: "Invalid workspace ID" });
         const ws = await service.getById(req.params.id, userId);
         if (!ws) return res.status(404).json({ error: "Not found" });
         const { name, description, icon } = req.body;
@@ -56,6 +62,7 @@ router.delete("/workspaces/:id", async (req, res) => {
     try {
         const userId = req.user?.id || req.headers["x-user-id"];
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        if (!validateUUID(req.params.id)) return res.status(400).json({ error: "Invalid workspace ID" });
         await service.delete(req.params.id, userId);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -65,6 +72,7 @@ router.post("/workspaces/:id/switch", async (req, res) => {
     try {
         const userId = req.user?.id || req.headers["x-user-id"];
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        if (!validateUUID(req.params.id)) return res.status(400).json({ error: "Invalid workspace ID" });
         const ws = await service.getById(req.params.id, userId);
         if (!ws) return res.status(404).json({ error: "Not found" });
         res.json({ success: true, workspace: ws, switched: true });
