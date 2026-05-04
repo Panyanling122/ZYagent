@@ -138,6 +138,9 @@ async function main() {
     // iLink 微信 ClawBot 路由
     const ilink_chat_api_1 = require("./routes/ilink-chat-api");
     app.use("/api/ilink", ilink_chat_api_1.default);
+    // iLink 微信绑定路由
+    const ilink_bind_routes_1 = require("./routes/ilink-bind-routes");
+    app.use("/api/ilink", ilink_bind_routes_1.default);
     // 工作空间路由
     const workspace_routes_1 = __importDefault(require("./routes/workspace-routes"));
     app.use("/api/workspaces", workspace_routes_1.default);

@@ -74,6 +74,24 @@ router.post('/chat', async (req, res) => {
         // 获取 workspace_id
         const soulWsResult = await db.query('SELECT workspace_id FROM souls WHERE id = $1', [soulId]);
         const workspaceId = soulWsResult.rows[0]?.workspace_id;
+        // === 微信绑定消息检测 ===
+        const bindMatch = message.match(/^绑定OpenClaw:([a-f0-9]{32})$/);
+        if (bindMatch) {
+            const token = bindMatch[1];
+            const bindResult = await db.query(
+                `UPDATE ilink_bind_tokens SET status = 'bound' WHERE token = $1 AND status = 'pending' AND expires_at > NOW() RETURNING user_id`,
+                [token]
+            );
+            if (bindResult.rows[0]) {
+                await db.query(
+                    `INSERT INTO ilink_user_mappings (wx_user_id, user_id, soul_id, created_at) VALUES ($1, $2, $3, NOW())
+                     ON CONFLICT (wx_user_id, soul_id) DO UPDATE SET user_id = $2`,
+                    [String(wxUserId || 'anonymous'), bindResult.rows[0].user_id, soulId]
+                );
+                return res.json({ success: true, type: 'bind_success', message: '绑定成功！您现在可以通过微信与智能体对话了。' });
+            }
+            return res.json({ success: false, type: 'bind_failed', message: '绑定口令无效或已过期，请重新获取二维码。' });
+        }
         // 查找用户映射
         const mappingResult = await db.query(
             `SELECT user_id FROM ilink_user_mappings WHERE wx_user_id = $1 AND soul_id = $2`,
