@@ -10,7 +10,7 @@ on:
     branches: [main, master]
     paths:
       - "desktop/**"
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -44,12 +44,16 @@ jobs:
           cache: npm
           cache-dependency-path: desktop/package-lock.json
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-action@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - name: Install Rust
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          source "$HOME/.cargo/env"
+          rustc --version
+          cargo --version
 
-      - name: Install Linux system dependencies
+      - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
@@ -59,8 +63,9 @@ jobs:
         working-directory: ./desktop
         run: npm install
 
-      - name: Modify API endpoint to production
+      - name: Set production API endpoint
         working-directory: ./desktop
+        shell: bash
         run: |
           sed -i 's/localhost:3001/120.55.37.196:3001/g' src/api/client.ts
           sed -i 's/localhost:3003/120.55.37.196:3003/g' src/hooks/useWebSocket.ts
