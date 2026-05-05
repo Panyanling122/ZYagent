@@ -67,8 +67,9 @@ jobs:
         working-directory: ./desktop
         shell: bash
         run: |
-          sed -i 's/localhost:3001/120.55.37.196:3001/g' src/api/client.ts
-          sed -i 's/localhost:3003/120.55.37.196:3003/g' src/hooks/useWebSocket.ts
+          sed -i.bak 's/localhost:3001/120.55.37.196:3001/g' src/api/client.ts
+          sed -i.bak 's/localhost:3003/120.55.37.196:3003/g' src/hooks/useWebSocket.ts
+          rm -f src/api/client.ts.bak src/hooks/useWebSocket.ts.bak
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
