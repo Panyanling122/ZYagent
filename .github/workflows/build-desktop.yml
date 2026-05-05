@@ -44,7 +44,8 @@ jobs:
           cache: npm
           cache-dependency-path: desktop/package-lock.json
 
-      - name: Install Rust
+      - name: Install Rust (Linux/macOS)
+        if: matrix.platform != 'windows-latest'
         shell: bash
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
@@ -52,6 +53,15 @@ jobs:
           source "$HOME/.cargo/env"
           rustc --version
           cargo --version
+
+      - name: Install Rust (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri https://win.rustup.rs/x86_64 -OutFile rustup-init.exe
+          .\rustup-init.exe -y --default-toolchain stable
+          echo "$env:USERPROFILE\.cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          rustup show
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -71,13 +81,18 @@ jobs:
           sed -i.bak 's/localhost:3003/120.55.37.196:3003/g' src/hooks/useWebSocket.ts
           rm -f src/api/client.ts.bak src/hooks/useWebSocket.ts.bak
 
+      - name: Build frontend (separate step for clear errors)
+        working-directory: ./desktop
+        run: npm run build
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUST_BACKTRACE: 1
         with:
           projectPath: ./desktop
           args: ${{ matrix.args }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

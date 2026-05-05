@@ -1,15 +1,14 @@
 {
-  "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "OpenClaw",
   "version": "0.1.0",
   "identifier": "com.openclaw.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": false,
     "windows": [
       {
         "title": "OpenClaw",
@@ -22,12 +21,12 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3001 ws://localhost:3003; img-src 'self' data:; font-src 'self';"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://120.55.37.196:3001 ws://120.55.37.196:3003; img-src 'self' data:; font-src 'self';"
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["deb", "appimage", "msi", "dmg"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
