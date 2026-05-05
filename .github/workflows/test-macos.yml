@@ -1,0 +1,27 @@
+name: Test macOS npm install
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (no cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test npm install
+        working-directory: ./desktop
+        run: |
+          node -v
+          npm -v
+          npm install --prefer-offline 2>&1 | tail -20
+          echo "=== ls node_modules/.bin/tsc ==="
+          ls node_modules/.bin/tsc 2>/dev/null || echo "tsc not found"
+          echo "=== ls node_modules/typescript ==="
+          ls node_modules/typescript/package.json 2>/dev/null || echo "typescript not installed"
