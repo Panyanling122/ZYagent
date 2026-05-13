@@ -102,4 +102,4 @@ class WebSocketServer {
         return `ws_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
     }
 }
-exports.WebSocketServer = WSServer;
+exports.WebSocketServer = WebSocketServer;

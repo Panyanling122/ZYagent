@@ -109,7 +109,6 @@ class MessageRouter {
             }
             const response = await this.services.soulManager.handleChat(client.soulId, { messages: modelMessages });
             // === await_human 检测 ===
-            const { AwaitHumanParser } = require('../services/await-human-parser');
             const awaitParser = AwaitHumanParser.getInstance();
             const context = { messages: modelMessages, soulId: client.soulId, userId: client.userId, workspaceId: client.workspaceId, topic: currentTopic };
             const awaitResult = await awaitParser.process(client.soulId, client.userId, client.workspaceId, response, 'websocket', currentTopic, context);
